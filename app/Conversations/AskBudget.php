@@ -13,6 +13,14 @@ class AskBudget extends Conversation
      */
     public function run()
     {
-        //
+        $message = $this->bot->getMessage();
+        $reply = $message->getExtras()['apiReply'];
+        $parameters = $message->getExtras()['apiParameters'];
+        $this->bot->reply($reply);
+        if (checkIfLastInFlow()) {
+            clearConversationState();
+            $this->bot->startConversation(new LoopLandingConversation());
+        }
+        return;
     }
 }
