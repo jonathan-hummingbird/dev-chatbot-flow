@@ -23,3 +23,8 @@ If you discover a security vulnerability within BotMan or BotMan Studio, please 
 
 BotMan is free software distributed under the terms of the MIT license.
 
+## Setup
+1. `$ composer install`
+2. `$ cp .env.example .env`
+3. `yarn`
+4. Add `DIALOG_FLOW_API_TOKEN` in ENV Variable
