@@ -53,6 +53,10 @@ function clearConversationState() {
     $state->clear();
 }
 
+function is_incorrect_intent($intent) {
+    return $intent !== FINISH_INTENT && !array_key_exists($intent, MAP_ACTION_TO_CONVERSATION);
+}
+
 function startNextConversation(BotMan $bot, $nextIntent) {
     $state = new ConversationState();
     if ($nextIntent === FINISH_INTENT) {

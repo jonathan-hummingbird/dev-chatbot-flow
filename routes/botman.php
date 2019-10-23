@@ -2,14 +2,16 @@
 
 use App\Conversations\LandingConversation;
 use App\Http\Controllers\BotManController;
+use App\Http\Middleware\ChatbaseMiddlewareAsync;
 use BotMan\BotMan\Middleware\ApiAi;
 use BotMan\BotMan\BotMan;
 
 $botman = resolve('botman');
 $dialogFlow = ApiAi::create(env("DIALOG_FLOW_API_TOKEN", ""))->listenForAction();
-
+$chatbase = new ChatbaseMiddlewareAsync();
 // Apply global "received" middleware
 $botman->middleware->received($dialogFlow);
+$botman->middleware->received($chatbase);
 
 
 //$botman->hears('Hi', function ($bot) {

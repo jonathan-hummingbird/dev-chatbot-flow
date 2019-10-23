@@ -21,6 +21,8 @@ class LandingConversation extends Conversation
         $apiReply = $extras['apiReply'];
         $apiContext = $extras['apiContexts'];
         Log::alert($apiContext);
+        $sender = $this->bot->getMessage()->getSender();
+        Log::alert("Sender is " . $sender);
         $question = Question::create($apiReply)->callbackId("which_action")
             ->addButtons([
                 Button::create("Get moving distance")->value("distance"),
