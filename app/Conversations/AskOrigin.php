@@ -16,10 +16,13 @@ class AskOrigin extends Conversation
     public function run()
     {
         $message = $this->bot->getMessage();
+        $extras = $message->getExtras();
         $reply = $message->getExtras()['apiReply'];
         $parameters = $message->getExtras()['apiParameters'];
         Log::alert("Origin parameters");
         Log::alert($parameters);
+        Log::alert("Extra parameters ");
+        Log::alert($extras);
         $this->bot->userStorage()->save(['origin' => $parameters]);
         $this->bot->ask($reply, function () {
             $nextAction = $this->bot->getMessage()->getExtras()['apiAction'];

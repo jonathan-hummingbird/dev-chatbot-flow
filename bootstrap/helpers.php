@@ -3,7 +3,20 @@
 use App\Conversations\LoopLandingConversation;
 use App\ConversationState;
 use BotMan\BotMan\BotMan;
+use BotMan\Drivers\Facebook\Extensions\ButtonTemplate;
+use BotMan\Drivers\Facebook\Extensions\Element;
+use BotMan\Drivers\Facebook\Extensions\ElementButton;
+use BotMan\Drivers\Facebook\Extensions\GenericTemplate;
+use BotMan\Drivers\Facebook\Extensions\MediaAttachmentElement;
+use BotMan\Drivers\Facebook\Extensions\MediaTemplate;
+use BotMan\Drivers\Facebook\Extensions\MediaUrlElement;
 use Illuminate\Support\Facades\Log;
+
+const FACEBOOK_TEXT = 0;
+const FACEBOOK_CARD = 1;
+const FACEBOOK_IMAGE = 3;
+const FACEBOOK_QUICK_REPLY = 2;
+const FACEBOOK_CUSTOM = 4;
 
 const FINISH_INTENT = "bye";
 
@@ -90,4 +103,66 @@ function startNextConversation(BotMan $bot, $nextIntent) {
         }
     }
     return;
+}
+
+function validateUrl ($url) {
+    return !filter_var($url, FILTER_VALIDATE_URL) === false;
+}
+
+function generateFacebookButtons($message) {
+    $output = [];
+    foreach($message["buttons"] as $button) {
+        $button = ElementButton::create($button["text"]);
+        if (validateUrl($button["postback"])) {
+            //postback is a URL
+            $output[] = $button->url($button["postback"]);
+        } else {
+            //postback is not a URL
+            $output = $button->payload($button["postback"])->type('postback');
+        }
+    }
+    return $output;
+}
+
+function generateFacebookElement($message) {
+    $buttons = array_key_exists("buttons", $message)
+        ? generateFacebookButtons($message)
+        : [];
+    $output = Element::create($message['title'])->subtitle($message['subtitle'])->image($message['imageUrl']);
+    return count($buttons) > 0
+        ? $output->addButtons($buttons)
+        : $output;
+}
+
+function facebookMessageParser($message) {
+    switch ($message['type']) {
+        case FACEBOOK_TEXT:
+            return $message['speech'];
+            break;
+        case FACEBOOK_CARD:
+            return GenericTemplate::create()
+                ->addImageAspectRatio(GenericTemplate::RATIO_SQUARE)
+                ->addElement(generateFacebookElement($message));
+            break;
+        case FACEBOOK_QUICK_REPLY:
+            return ButtonTemplate::create($message['title'])->addButtons(
+                array_map(function($item) {
+                    return ElementButton::create($item)->payload($item)->type('postback');
+                }, $message['replies'])
+            );
+            break;
+        case FACEBOOK_IMAGE:
+            return MediaTemplate::create()
+                ->element(
+                    MediaUrlElement::create('image')
+                    ->url($message['imageUrl'])
+                );
+            break;
+        case FACEBOOK_CUSTOM:
+            return 'Coming soon';
+            break;
+        default:
+            return '';
+            break;
+    }
 }
