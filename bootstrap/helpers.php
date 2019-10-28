@@ -23,7 +23,8 @@ const FINISH_INTENT = "bye";
 const CONVERSATION_FLOW = [
     "get_distance" => ["get_origin", "get_destination"],
     "subscribe_email" => ["get_email", "ask_consent"],
-    "get_movers" => ["get_location", "get_budget"]
+    "get_movers" => ["get_location", "get_budget"],
+    "get_information_move" => ["obj_origin", "obj_destination", "obj_date_time", "obj_number_of_rooms"]
 ];
 
 const MAP_ACTION_TO_CONVERSATION = [
@@ -36,6 +37,13 @@ const MAP_ACTION_TO_CONVERSATION = [
     "get_location" => "App\Conversations\AskLocation",
     "get_budget" => "App\Conversations\AskBudget",
     "ask_consent" => "App\Conversations\AskConsent",
+];
+
+const OBJECTIVE_REQUIREMENTS = [
+    "obj_origin" => "origin",
+    "obj_destination" => "destination",
+    "obj_date_time" => "date_time",
+    "obj_number_of_rooms" => "number_of_rooms"
 ];
 
 function ensureCorrectFlow($nextIntent) {
