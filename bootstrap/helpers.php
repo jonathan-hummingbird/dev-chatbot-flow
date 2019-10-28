@@ -21,16 +21,17 @@ const FACEBOOK_CUSTOM = 4;
 const FINISH_INTENT = "bye";
 
 const CONVERSATION_FLOW = [
-    "get_distance" => ["get_origin", "get_destination"],
-    "subscribe_email" => ["get_email", "ask_consent"],
-    "get_movers" => ["get_location", "get_budget"],
-    "get_information_move" => ["obj_origin", "obj_destination", "obj_date_time", "obj_number_of_rooms"]
+    "get_distance" => ["get_origin", "get_destination", "goal" => false],
+    "subscribe_email" => ["get_email", "ask_consent", "goal" => false],
+    "get_movers" => ["get_location", "get_budget", "goal" => false],
+    "get_information_move" => ["obj_origin", "obj_destination", "obj_date_time", "obj_number_of_rooms", "goal" => true]
 ];
 
 const MAP_ACTION_TO_CONVERSATION = [
     "get_distance" => null, //Root intent
     "subscribe_email" => null, //Root intent
     "get_movers" => null, //Root intent
+    "get_information_move" => null,
     "get_origin" => "App\Conversations\AskOrigin",
     "get_destination" => "App\Conversations\AskDestination",
     "get_email" => "App\Conversations\AskEmail",
@@ -51,8 +52,8 @@ function ensureCorrectFlow($nextIntent) {
     $rootIntent = $state->get()[0];
     $others = array_merge(array_slice($state->get(), 1), [$nextIntent]);
     $compareArray = CONVERSATION_FLOW[$rootIntent];
-    foreach ($others as $other) {
-        if (!in_array($other, $compareArray)) {
+    foreach ($others as $key => $other) {
+        if (!is_string($key) && !in_array($other, $compareArray)) {
             //Conversation not in flow
             return false;
         }
@@ -80,36 +81,76 @@ function is_incorrect_intent($intent) {
 
 function startNextConversation(BotMan $bot, $nextIntent) {
     $state = new ConversationState();
+
     if ($nextIntent === FINISH_INTENT) {
         Log::alert("BYE FLOW DETECTED!");
         $reply = $bot->getMessage()->getExtras()['apiReply'];
         $bot->reply($reply);
         return;
     }
+
     //Handle incorrect intent
-    if (!array_key_exists($nextIntent, MAP_ACTION_TO_CONVERSATION)) {
+    if (!array_key_exists($nextIntent, MAP_ACTION_TO_CONVERSATION) || !array_key_exists($nextIntent, CONVERSATION_FLOW)) {
         Log::alert("INCORRECT INTENT DETECTED!");
         $bot->startConversation(new LoopLandingConversation());
         return;
     }
-    if (MAP_ACTION_TO_CONVERSATION[$nextIntent] === null) {
-        //If action is root intent, we need to clear intent
-        $state->clear();
-        $action = CONVERSATION_FLOW[$nextIntent][0];
-        $state->updateMultiple([$nextIntent, $action]);
-        $nextClass = MAP_ACTION_TO_CONVERSATION[$action];
-        $bot->startConversation(new $nextClass());
-    } else {
-        //Ensure the flow is correct, otherwise just stops conversation for now
-        if (ensureCorrectFlow($nextIntent)) {
-            $state->update($nextIntent);
-            $nextClass = MAP_ACTION_TO_CONVERSATION[$nextIntent];
+
+    if (!CONVERSATION_FLOW[$nextIntent]["goal"]) {
+        //Logic for flow based conversation
+        if (MAP_ACTION_TO_CONVERSATION[$nextIntent] === null) {
+            //If action is root intent, we need to clear intent
+            $state->clear();
+            $action = CONVERSATION_FLOW[$nextIntent][0];
+            $state->updateMultiple([$nextIntent, $action]);
+            $nextClass = MAP_ACTION_TO_CONVERSATION[$action];
             $bot->startConversation(new $nextClass());
         } else {
-            Log::alert("INCORRECT FLOW DETECTED!");
-            $bot->startConversation(new LoopLandingConversation());
+            //Ensure the flow is correct, otherwise just stops conversation for now
+            if (ensureCorrectFlow($nextIntent)) {
+                $state->update($nextIntent);
+                $nextClass = MAP_ACTION_TO_CONVERSATION[$nextIntent];
+                $bot->startConversation(new $nextClass());
+            } else {
+                Log::alert("INCORRECT FLOW DETECTED!");
+                $bot->startConversation(new LoopLandingConversation());
+            }
         }
+    } else {
+        //Logic for goal based conversation
+        //Initial set status to true to differentiate between flow-based conversation
+
+        //$parameters = ['destination' => ["test" => 1], "number_of_rooms" => 1, "origin" => "", "date_time" => ""];
+        // $nextIntent = "get_information_move";
+
+        if (!$state->getStatus()) {
+            $state->updateStatus(true);
+        }
+        //First step: check fulfilled objectives & get a list of unfulfilled objectives
+        $extras = $bot->getMessage()->getExtras();
+        Log::alert("INTENT EXTRAS!!!");
+        Log::alert($extras);
+        $parameters = $extras["apiParameters"];
+
+        $all_objectives = array_filter(CONVERSATION_FLOW[$nextIntent], function ($key) {
+            return !is_string($key);
+        }, ARRAY_FILTER_USE_KEY);
+
+        $fulfilled_objectives_raw = array_filter($parameters, function ($value, $key) use ($all_objectives) {
+            $objective_name = array_search($key, OBJECTIVE_REQUIREMENTS);
+            return !!$value && in_array($objective_name, $all_objectives);
+        }, ARRAY_FILTER_USE_BOTH);
+
+        $fulfilled_objectives = array_map(function ($key) {
+            return array_search($key, OBJECTIVE_REQUIREMENTS);
+        }, array_keys($fulfilled_objectives_raw));
+
+        $unfulfilled_objectives = array_diff($all_objectives, $fulfilled_objectives);
+
+        //Second step: satisfy unfulfilled objectives by going through conversation(s) mapped to the particular
+        //each objective
     }
+
     return;
 }
 

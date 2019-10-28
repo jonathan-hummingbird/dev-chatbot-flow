@@ -9,12 +9,17 @@ class ConversationState
 {
     private $valueStore = null;
     const defaultKey = "state";
+    const statusKey = "status";
     public function __construct()
     {
         $this->valueStore = Valuestore::make(storage_path('app/conversation_state.json'));
         if (!$this->valueStore->has(self::defaultKey)) {
             //initialise state
             $this->valueStore->put(self::defaultKey, []);
+        }
+        if (!$this->valueStore->has(self::statusKey)) {
+            //initialise state
+            $this->valueStore->put(self::statusKey, false);
         }
     }
 
@@ -32,8 +37,15 @@ class ConversationState
         $this->valueStore->put(self::defaultKey, $new);
     }
 
+    public function updateStatus($update) {
+        $this->valueStore->put(self::statusKey, $update);
+    }
+
     public function get() {
         return $this->valueStore->get(self::defaultKey);
     }
 
+    public function getStatus() {
+        return $this->valueStore->get(self::statusKey);
+    }
 }
