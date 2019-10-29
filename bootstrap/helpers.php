@@ -24,7 +24,19 @@ const CONVERSATION_FLOW = [
     "get_distance" => ["get_origin", "get_destination", "goal" => false],
     "subscribe_email" => ["get_email", "ask_consent", "goal" => false],
     "get_movers" => ["get_location", "get_budget", "goal" => false],
-    "get_information_move" => ["obj_origin", "obj_destination", "obj_date_time", "obj_number_of_rooms", "goal" => true]
+    "get_information_move" =>
+        [ "objectives" =>
+            [
+                "obj_origin" => [
+                    "parameter" => "origin",
+                    "class" => "App\Conversations\AskOrigin"
+                ],
+                "obj_destination" => [],
+                "obj_moving_date" => [],
+                "obj_number_of_rooms" => []
+            ],
+            "goal" => true
+        ]
 ];
 
 const MAP_ACTION_TO_CONVERSATION = [
@@ -43,7 +55,7 @@ const MAP_ACTION_TO_CONVERSATION = [
 const OBJECTIVE_REQUIREMENTS = [
     "obj_origin" => "origin",
     "obj_destination" => "destination",
-    "obj_date_time" => "date_time",
+    "obj_moving_date" => "moving_date || moving_date_period",
     "obj_number_of_rooms" => "number_of_rooms"
 ];
 
@@ -137,8 +149,8 @@ function startNextConversation(BotMan $bot, $nextIntent) {
         }, ARRAY_FILTER_USE_KEY);
 
         $fulfilled_objectives_raw = array_filter($parameters, function ($value, $key) use ($all_objectives) {
-            $objective_name = array_search($key, OBJECTIVE_REQUIREMENTS);
-            return !!$value && in_array($objective_name, $all_objectives);
+            $objective_name_array = array_filter(OBJECTIVE_REQUIREMENTS);
+            return !!$value && !!$objective_name && in_array($objective_name, $all_objectives);
         }, ARRAY_FILTER_USE_BOTH);
 
         $fulfilled_objectives = array_map(function ($key) {
@@ -146,6 +158,9 @@ function startNextConversation(BotMan $bot, $nextIntent) {
         }, array_keys($fulfilled_objectives_raw));
 
         $unfulfilled_objectives = array_diff($all_objectives, $fulfilled_objectives);
+
+        Log::alert("UNFULFILLED OBJECTIVES!!!");
+        Log::alert($unfulfilled_objectives);
 
         //Second step: satisfy unfulfilled objectives by going through conversation(s) mapped to the particular
         //each objective
