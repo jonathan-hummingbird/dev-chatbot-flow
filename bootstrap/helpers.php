@@ -149,7 +149,10 @@ function startNextConversation(BotMan $bot, $nextIntent) {
         }, ARRAY_FILTER_USE_KEY);
 
         $fulfilled_objectives_raw = array_filter($parameters, function ($value, $key) use ($all_objectives) {
-            $objective_name_array = array_filter(OBJECTIVE_REQUIREMENTS);
+            $objective_name_array = array_filter(OBJECTIVE_REQUIREMENTS, function ($value, $key) {
+                
+            });
+            $objective_name = count(array_keys($objective_name_array)) > 0 ? array_keys($objective_name_array)[0] : null;
             return !!$value && !!$objective_name && in_array($objective_name, $all_objectives);
         }, ARRAY_FILTER_USE_BOTH);
 
